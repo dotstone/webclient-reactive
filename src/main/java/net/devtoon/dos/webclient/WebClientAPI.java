@@ -24,7 +24,7 @@ public class WebClientAPI {
 //                .subscribe(System.out::println);
 
         api.getAllEvents()
-                .flatMap(event -> api.postNewProduct(event.getEventType(), new Random().nextInt()))
+                .flatMap(event -> api.postNewProduct(null, event.getEventType(), new Random().nextInt()))
                 .take(5)
                 .thenMany(api.getAllProducts())
                 .subscribe(product -> System.err.println("Added product: " + product.getName() + " (" + product.getPrice() + ")"));
@@ -36,31 +36,37 @@ public class WebClientAPI {
                  .build();
      }
 
-     private Mono<ResponseEntity<Product>> postNewProduct(String name, int price) {
+     public Mono<ResponseEntity<Product>> postNewProduct(String id, String name, int price) {
          return webClient.post()
-                 .body(Mono.just(new Product(null, name, price)), Product.class)
+                 .body(Mono.just(new Product(id, name, price)), Product.class)
                  .exchange()
                  .flatMap(response -> response.toEntity(Product.class))
                  .doOnSuccess(o -> System.out.println("***** POST " + o));
      }
 
-     private Flux<Product> getAllProducts() {
+     public Mono<ResponseEntity<Product>> getProduct(String id) {
+        return webClient.get().uri("/{id}", id)
+                .exchange()
+                .flatMap(response -> response.toEntity(Product.class));
+     }
+
+     public Flux<Product> getAllProducts() {
          return webClient.get()
                  .retrieve()
                  .bodyToFlux(Product.class)
                  .doOnNext(o -> System.out.println("***** GET " + o));
      }
 
-     private Mono<Product> updateProduct(String id, String name, int price) {
+     public Mono<Product> updateProduct(String id, String name, int price) {
          return webClient.put()
                  .uri("/{id}", id)
-                 .body(Mono.just(new Product(null, name, price)), Product.class)
+                 .body(Mono.just(new Product(id, name, price)), Product.class)
                  .retrieve()
                  .bodyToMono(Product.class)
                  .doOnSuccess(o -> System.out.println("***** UPDATE " + o));
      }
 
-     private Mono<Void> deleteProduct(String id) {
+     public Mono<Void> deleteProduct(String id) {
          return webClient
                  .delete()
                  .uri("/{id}", id)
@@ -69,7 +75,11 @@ public class WebClientAPI {
                  .doOnSuccess(o -> System.out.println("***** DELETE " + o));
      }
 
-     private Flux<ProductEvent> getAllEvents() {
+     public Mono<Void> deleteAllProducts() {
+        return webClient.delete().retrieve().bodyToMono(Void.class);
+     }
+
+     public Flux<ProductEvent> getAllEvents() {
          return webClient.get()
                  .uri("/events")
                  .retrieve()
